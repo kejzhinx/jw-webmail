@@ -1,0 +1,87 @@
+{
+  "jw_sess_1789549509075_jedbqory": {
+    "user": {
+      "id": "usr-1789547175696",
+      "email": "inquiry12@playbook.com.ph",
+      "name": "inquiry 12 test",
+      "title": "Staff Member",
+      "department": "Operations",
+      "role": "staff",
+      "storageUsedMb": 0,
+      "storageQuotaMb": 2048,
+      "createdAt": "2026-09-16T08:26:15.696Z"
+    },
+    "credentials": {
+      "user": "inquiry12@playbook.com.ph",
+      "pass": "_C4Wg8pjkcN?"
+    }
+  },
+  "jw_sess_1789549591468_iqcy7xct": {
+    "user": {
+      "id": "usr-1789547175696",
+      "email": "inquiry12@playbook.com.ph",
+      "name": "inquiry 12 test",
+      "title": "Staff Member",
+      "department": "Operations",
+      "role": "staff",
+      "storageUsedMb": 0,
+      "storageQuotaMb": 2048,
+      "createdAt": "2026-09-16T08:26:15.696Z"
+    },
+    "credentials": {
+      "user": "inquiry12@playbook.com.ph",
+      "pass": "_C4Wg8pjkcN?"
+    }
+  },
+  "jw_sess_1789550298656_d3po6rff": {
+    "user": {
+      "id": "usr-1789547175696",
+      "email": "inquiry12@playbook.com.ph",
+      "name": "inquiry 12 test",
+      "title": "Staff Member",
+      "department": "Operations",
+      "role": "staff",
+      "storageUsedMb": 0,
+      "storageQuotaMb": 2048,
+      "createdAt": "2026-09-16T08:26:15.696Z"
+    },
+    "credentials": {
+      "user": "inquiry12@playbook.com.ph",
+      "pass": "_C4Wg8pjkcN?"
+    }
+  },
+  "jw_sess_1789550449147_2rv5x4u5": {
+    "user": {
+      "id": "usr-admin-01",
+      "email": "admin@playbook.com.ph",
+      "name": "Administrator",
+      "title": "Systems Administrator",
+      "department": "IT & Infrastructure",
+      "role": "admin",
+      "storageUsedMb": 120,
+      "storageQuotaMb": 2048,
+      "createdAt": "2026-01-10T08:00:00Z"
+    },
+    "credentials": {
+      "user": "admin@playbook.com.ph",
+      "pass": "12345"
+    }
+  },
+  "jw_sess_1789550462564_ln0kb74d": {
+    "user": {
+      "id": "usr-admin-01",
+      "email": "admin@playbook.com.ph",
+      "name": "Administrator",
+      "title": "Systems Administrator",
+      "department": "IT & Infrastructure",
+      "role": "admin",
+      "storageUsedMb": 120,
+      "storageQuotaMb": 2048,
+      "createdAt": "2026-01-10T08:00:00Z"
+    },
+    "credentials": {
+      "user": "admin@playbook.com.ph",
+      "pass": "12345"
+    }
+  }
+}

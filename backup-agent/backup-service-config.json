@@ -1,0 +1,28 @@
+{
+  "serviceName": "JW-Mail-Backup-Service",
+  "backupPath": "D:\\JW-Mail-Backup",
+  "serverUrl": "http://localhost:3000",
+  "registrationToken": "SECURITY_AUTH_REMOVED",
+  "syncIntervalSeconds": 120,
+  "minFreeSpaceGb": 1.0,
+  "heartbeatIntervalSeconds": 15,
+  "bluehost": {
+    "host": "mail.playbook.com.ph",
+    "port": 993,
+    "secure": true
+  },
+  "mailboxes": [
+    {
+      "email": "jw@playbook.com.ph",
+      "password": "Playbook2026!"
+    },
+    {
+      "email": "jw-webmail@playbook.com.ph",
+      "password": "Playbook2026!"
+    },
+    {
+      "email": "admin@playbook.com.ph",
+      "password": "AdminPlaybook2026!"
+    }
+  ]
+}

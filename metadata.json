@@ -1,0 +1,6 @@
+{
+  "name": "JW Summit Mail Server",
+  "description": "Secure corporate webmail client and mail server portal for JW Summit Group Inc. featuring responsive authentication and modern email management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

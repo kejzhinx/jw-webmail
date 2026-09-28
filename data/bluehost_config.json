@@ -1,0 +1,34 @@
+{
+  "primaryDomain": "playbook.com.ph",
+  "domains": [
+    {
+      "id": "dom-01",
+      "domain": "playbook.com.ph",
+      "isPrimary": true,
+      "mxRecordsConfigured": true,
+      "spfConfigured": true,
+      "dkimConfigured": true,
+      "status": "verified",
+      "createdAt": "2026-01-10T08:00:00Z"
+    }
+  ],
+  "imapHost": "mail.playbook.com.ph",
+  "imapPort": 993,
+  "imapEncryption": "SSL/TLS",
+  "imapUsername": "admin@playbook.com.ph",
+  "imapPassword": "",
+  "imapStatus": "untested",
+  "smtpHost": "mail.playbook.com.ph",
+  "smtpPort": 465,
+  "smtpEncryption": "SSL/TLS",
+  "smtpUsername": "jw@playbook.com.ph",
+  "smtpPassword": "",
+  "smtpStatus": "untested",
+  "useHostDeviceForStorage": true,
+  "deviceStoragePath": "./data/backups",
+  "syncIntervalMinutes": 5,
+  "backupStorageConfig": "local",
+  "backupLocation": "./data/backups",
+  "backupSchedule": "weekly",
+  "backupRetention": "30d"
+}

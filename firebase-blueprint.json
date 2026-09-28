@@ -1,0 +1,154 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "User Account",
+      "description": "Represents a webmail user account with Bluehost server credentials.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "avatar": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "staff", "executive"] },
+        "department": { "type": "string" },
+        "storageUsedMb": { "type": "number" },
+        "storageQuotaMb": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "suspended", "locked"] },
+        "passwordEnc": { "type": "string" },
+        "imapUsername": { "type": "string" },
+        "imapPasswordEnc": { "type": "string" },
+        "imapHost": { "type": "string" },
+        "imapPort": { "type": "number" },
+        "imapSecure": { "type": "boolean" },
+        "smtpUsername": { "type": "string" },
+        "smtpPasswordEnc": { "type": "string" },
+        "smtpHost": { "type": "string" },
+        "smtpPort": { "type": "number" },
+        "smtpSecure": { "type": "boolean" },
+        "lastLogin": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "email", "name", "role", "status"]
+    },
+    "ServerConfig": {
+      "title": "Server Configuration",
+      "description": "Global Bluehost and Host PC configuration.",
+      "type": "object",
+      "properties": {
+        "primaryDomain": { "type": "string" },
+        "imapHost": { "type": "string" },
+        "imapPort": { "type": "number" },
+        "imapEncryption": { "type": "string" },
+        "smtpHost": { "type": "string" },
+        "smtpPort": { "type": "number" },
+        "smtpEncryption": { "type": "string" },
+        "useHostDeviceForStorage": { "type": "boolean" },
+        "deviceStoragePath": { "type": "string" },
+        "syncIntervalMinutes": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "DiagnosticResult": {
+      "title": "Diagnostic Result",
+      "description": "Result of a mailbox diagnostic suite execution.",
+      "type": "object",
+      "properties": {
+        "mailbox": { "type": "string" },
+        "host": { "type": "string" },
+        "executedAt": { "type": "string" },
+        "overallStatus": { "type": "string" },
+        "passedCount": { "type": "number" },
+        "failedCount": { "type": "number" },
+        "totalDurationMs": { "type": "number" },
+        "results": { "type": "array" }
+      }
+    },
+    "CustomFolder": {
+      "title": "Custom Folder",
+      "description": "User-defined mailbox folder.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "UserSession": {
+      "title": "User Session",
+      "description": "Active user session data.",
+      "type": "object",
+      "properties": {
+        "user": { "type": "object" },
+        "credentials": { "type": "object" }
+      }
+    },
+    "BackupRunRecord": {
+      "title": "Backup Run Record",
+      "description": "Historical backup record item.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "mailbox": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "totalSizeBytes": { "type": "number" },
+        "messageCount": { "type": "number" }
+      }
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "Real-time messenger chat message between webmail users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderEmail": { "type": "string" },
+        "senderName": { "type": "string" },
+        "recipientEmail": { "type": "string" },
+        "recipientName": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "attachmentUrl": { "type": "string" },
+        "attachmentName": { "type": "string" }
+      },
+      "required": ["id", "senderEmail", "recipientEmail", "text", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserAccount",
+      "description": "Authoritative user metadata collection."
+    },
+    "/accounts/{accountId}": {
+      "schema": "UserAccount",
+      "description": "User accounts and their credentials."
+    },
+    "/settings/{settingId}": {
+      "schema": "object",
+      "description": "Application settings docs (bluehost, backup_config, etc)."
+    },
+    "/diagnostics/{diagnosticId}": {
+      "schema": "DiagnosticResult",
+      "description": "Historical diagnostic test results."
+    },
+    "/custom_folders/{folderId}": {
+      "schema": "CustomFolder",
+      "description": "User custom folders."
+    },
+    "/sessions/{sessionId}": {
+      "schema": "UserSession",
+      "description": "Active sessions."
+    },
+    "/backup_registry/{backupId}": {
+      "schema": "BackupRunRecord",
+      "description": "Backup execution registry."
+    },
+    "/chat_messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Internal messenger chat messages between staff users."
+    }
+  }
+}

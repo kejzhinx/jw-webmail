@@ -1,0 +1,18 @@
+{
+  "name": "jw-mail-backup-agent",
+  "version": "1.0.0",
+  "description": "Lightweight Host PC Mailbox Backup Agent for JW-Webmail",
+  "main": "agent.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "node agent.mjs",
+    "test-storage": "node agent.mjs --test-storage"
+  },
+  "dependencies": {
+    "imapflow": "^2.0.5",
+    "mailparser": "^3.9.28"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

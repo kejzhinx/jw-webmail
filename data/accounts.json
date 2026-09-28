@@ -1,0 +1,33 @@
+[
+  {
+    "id": "usr-admin-01",
+    "email": "admin@playbook.com.ph",
+    "name": "Administrator",
+    "title": "Systems Administrator",
+    "role": "admin",
+    "department": "IT & Infrastructure",
+    "status": "active",
+    "connectedToBluehost": false,
+    "connectionType": "local",
+    "storageUsedMb": 120,
+    "storageQuotaMb": 2048,
+    "createdAt": "2026-01-10T08:00:00Z",
+    "lastLogin": "Just now",
+    "passwordEnc": "enc:d06d17ae5484b64ba662e8a4:769515391c1e66d78dfc3909163e2227:c78d9df737"
+  },
+  {
+    "id": "usr-inquiry12",
+    "email": "inquiry12@playbook.com.ph",
+    "name": "Inquiry Support",
+    "title": "Customer Operations",
+    "role": "staff",
+    "department": "Customer Service",
+    "status": "active",
+    "connectedToBluehost": true,
+    "connectionType": "bluehost",
+    "storageUsedMb": 45,
+    "storageQuotaMb": 2048,
+    "createdAt": "2026-01-10T08:00:00Z",
+    "lastLogin": "Just now"
+  }
+]

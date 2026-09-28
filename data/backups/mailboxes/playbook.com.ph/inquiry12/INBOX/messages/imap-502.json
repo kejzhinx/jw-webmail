@@ -1,0 +1,28 @@
+{
+  "id": "imap-502",
+  "folder": "inbox",
+  "from": {
+    "name": "service3",
+    "email": "service3@playbook.com.ph"
+  },
+  "to": [
+    {
+      "name": "inquiry12",
+      "email": "inquiry12@playbook.com.ph"
+    }
+  ],
+  "subject": "TEST",
+  "preview": "TEST",
+  "bodyText": "Downloaded via IMAP for inquiry12@playbook.com.ph (INBOX)",
+  "timestamp": "2026-09-16T08:58:09.000Z",
+  "isRead": true,
+  "isStarred": false,
+  "hasAttachments": false,
+  "security": {
+    "tlsVersion": "TLS 1.3 Strict",
+    "dkimStatus": "pass",
+    "spfStatus": "pass",
+    "signatureVerified": true,
+    "ipOrigin": "mail.playbook.com.ph"
+  }
+}

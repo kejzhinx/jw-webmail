@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JW Summit Corporate Messenger</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-2 sm:p-4 font-sans antialiased">
+
+  <!-- Main Container -->
+  <div class="w-full max-w-5xl h-[94vh] sm:h-[88vh] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex overflow-hidden">
+    
+    <!-- LEFT PANE: CONTACTS & ROOM -->
+    <div class="w-72 sm:w-80 bg-slate-900/90 border-r border-slate-800 flex flex-col shrink-0">
+      <div class="p-3.5 border-b border-slate-800">
+        <div class="flex items-center justify-between mb-2.5">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-xs">
+              💬
+            </div>
+            <div>
+              <h2 class="font-bold text-white text-xs">JW Messenger</h2>
+              <p class="text-[10px] text-slate-400">Direct & Corporate</p>
+            </div>
+          </div>
+          <button id="refreshContactsBtn" class="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors" title="Refresh contacts">
+            🔄
+          </button>
+        </div>
+
+        <input
+          type="text"
+          id="contactSearch"
+          placeholder="Filter colleagues..."
+          class="w-full px-3 py-1.5 text-xs bg-slate-950 border border-slate-700/80 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-500"
+        />
+      </div>
+
+      <!-- Contact / Room list -->
+      <div class="flex-1 overflow-y-auto divide-y divide-slate-800/40" id="contactsContainer">
+        <!-- Pinned Room Button -->
+        <div class="p-2">
+          <button id="roomBtn" class="w-full p-2.5 rounded-xl flex items-center gap-2.5 bg-indigo-600 text-white transition-all text-left">
+            <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-sm font-bold">🏢</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs">🏢 Company Room</span>
+                <span id="roomCountBadge" class="text-[10px] font-mono px-1 rounded bg-white/20">1 online</span>
+              </div>
+              <p class="text-[10px] text-indigo-100 truncate">General corporate chat</p>
+            </div>
+          </button>
+        </div>
+
+        <div class="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-slate-950/40">
+          Direct Messages
+        </div>
+
+        <div id="colleaguesList" class="p-1 space-y-1">
+          <!-- Dynamic contacts will appear here -->
+        </div>
+      </div>
+
+      <!-- Current User info footer -->
+      <div class="p-3 border-t border-slate-800 bg-slate-950/60 text-xs flex items-center justify-between">
+        <div class="truncate">
+          <span class="text-slate-400 text-[10px] block">Signed in as</span>
+          <span id="myDisplayName" class="font-bold text-white truncate text-xs">Connecting...</span>
+        </div>
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      </div>
+    </div>
+
+    <!-- RIGHT PANE: ACTIVE THREAD -->
+    <div class="flex-1 flex flex-col bg-slate-950 overflow-hidden">
+      <!-- Top Header -->
+      <header class="bg-slate-900/90 border-b border-slate-800 px-4 py-3 flex items-center justify-between backdrop-blur-md shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-bold text-sm" id="headerAvatar">
+            🏢
+          </div>
+          <div>
+            <h1 class="text-xs sm:text-sm font-bold text-white tracking-wide flex items-center gap-1.5" id="headerTitle">
+              <span>JW Summit Company Room</span>
+              <span class="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">0ms WS</span>
+            </h1>
+            <p class="text-[11px] text-slate-400" id="headerSubtitle">Broadcast to all company staff</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="text-[11px] bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700/60 text-slate-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="onlineCountText">1 online</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Message Feed Window (Auto-Scrolling) -->
+      <main id="chatMessages" class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 scroll-smooth">
+        <!-- Messages appended here -->
+      </main>
+
+      <!-- Typing Notification Indicator -->
+      <div id="typingIndicator" class="px-5 py-1 text-xs text-indigo-400 italic hidden h-6 shrink-0 flex items-center gap-1.5 bg-slate-900/40 border-t border-slate-800/40">
+        <span class="inline-flex gap-1 items-center">
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:0.2s]"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:0.4s]"></span>
+        </span>
+        <span id="typingUserText">Someone is typing...</span>
+      </div>
+
+      <!-- Input Form Footer -->
+      <footer class="p-3 bg-slate-900 border-t border-slate-800 shrink-0">
+        <form id="chatForm" class="flex items-center gap-2 relative">
+          <input
+            type="text"
+            id="messageInput"
+            placeholder="Type your message and press Enter (0ms Optimistic UI)..."
+            autocomplete="off"
+            class="flex-1 bg-slate-950 border border-slate-700/80 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+          />
+          <button
+            type="submit"
+            id="sendBtn"
+            class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/20 shrink-0 cursor-pointer"
+          >
+            <span>Send</span>
+            <svg class="w-3.5 h-3.5 transform rotate-90" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+            </svg>
+          </button>
+        </form>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // 1. Resolve User
+      let storedUser = null;
+      try {
+        const raw = localStorage.getItem('jw_active_user');
+        if (raw) storedUser = JSON.parse(raw);
+      } catch (e) {}
+
+      if (!storedUser) {
+        let storedEmail = sessionStorage.getItem('chat_email') || 'service3@playbook.com.ph';
+        storedUser = {
+          email: storedEmail,
+          name: storedEmail.split('@')[0],
+        };
+      }
+
+      let activeRecipient = 'room';
+      let contactsList = [];
+      let onlineSet = new Set();
+      let userStatuses = {};
+      let typingTimeout = null;
+
+      const myDisplayName = document.getElementById('myDisplayName');
+      const chatMessages = document.getElementById('chatMessages');
+      const chatForm = document.getElementById('chatForm');
+      const messageInput = document.getElementById('messageInput');
+      const onlineCountText = document.getElementById('onlineCountText');
+      const roomCountBadge = document.getElementById('roomCountBadge');
+      const typingIndicator = document.getElementById('typingIndicator');
+      const typingUserText = document.getElementById('typingUserText');
+      const colleaguesList = document.getElementById('colleaguesList');
+      const contactSearch = document.getElementById('contactSearch');
+      const headerTitle = document.getElementById('headerTitle');
+      const headerSubtitle = document.getElementById('headerSubtitle');
+      const headerAvatar = document.getElementById('headerAvatar');
+      const roomBtn = document.getElementById('roomBtn');
+      const refreshContactsBtn = document.getElementById('refreshContactsBtn');
+
+      myDisplayName.textContent = `${storedUser.name} (${storedUser.email})`;
+
+      // 2. Establish Socket.io connection
+      const socket = io({
+        transports: ['websocket', 'polling'],
+      });
+
+      socket.on('connect', () => {
+        socket.emit('user_join', {
+          email: storedUser.email,
+          name: storedUser.name,
+        });
+      });
+
+      socket.on('online_users', (list) => {
+        if (Array.isArray(list)) {
+          onlineSet = new Set(list.map(e => e.toLowerCase().trim()));
+          onlineCountText.textContent = `${Math.max(1, list.length)} online`;
+          roomCountBadge.textContent = `${Math.max(1, list.length)} online`;
+          renderContacts();
+        }
+      });
+
+      socket.on('user_statuses_update', (statuses) => {
+        if (statuses) {
+          userStatuses = statuses;
+          renderContacts();
+        }
+      });
+
+      socket.on('chat_message', (msg) => {
+        if (!msg) return;
+        const sLower = (msg.senderEmail || '').toLowerCase();
+        const rLower = (msg.recipientEmail || '').toLowerCase();
+        const myLower = storedUser.email.toLowerCase();
+        const actLower = activeRecipient.toLowerCase();
+
+        const isForRoom = actLower === 'room' && rLower === 'room';
+        const isForDM = actLower !== 'room' && ((sLower === actLower && rLower === myLower) || (sLower === myLower && rLower === actLower));
+
+        if (isForRoom || isForDM) {
+          appendMessage({
+            senderName: msg.senderName,
+            text: msg.text,
+            timestamp: msg.timestamp,
+            isOwn: sLower === myLower,
+          });
+        }
+      });
+
+      socket.on('user_typing', (data) => {
+        if (!data) return;
+        const actLower = activeRecipient.toLowerCase();
+        const sLower = (data.senderEmail || '').toLowerCase();
+        const rLower = (data.recipientEmail || '').toLowerCase();
+
+        if ((actLower === 'room' && rLower === 'room' && sLower !== storedUser.email.toLowerCase()) || (actLower !== 'room' && sLower === actLower)) {
+          if (data.isTyping) {
+            typingUserText.textContent = `${data.username || 'Colleague'} is typing...`;
+            typingIndicator.classList.remove('hidden');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          } else {
+            typingIndicator.classList.add('hidden');
+          }
+        }
+      });
+
+      function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
+      }
+
+      function appendMessage({ senderName, text, timestamp, isOwn }) {
+        const div = document.createElement('div');
+        div.className = `flex flex-col ${isOwn ? 'items-end' : 'items-start'} animate-in fade-in`;
+        div.innerHTML = `
+          ${!isOwn ? `<span class="text-[11px] font-bold text-indigo-400 mb-1 px-1">${escapeHtml(senderName)}</span>` : ''}
+          <div class="max-w-[80%] rounded-2xl px-4 py-2.5 shadow-md text-xs sm:text-sm break-words leading-relaxed ${
+            isOwn ? 'bg-indigo-600 text-white rounded-tr-xs' : 'bg-slate-900 text-slate-100 border border-slate-800 rounded-tl-xs'
+          }">
+            ${escapeHtml(text)}
+          </div>
+          <span class="text-[10px] text-slate-500 mt-1 px-1">${escapeHtml(timestamp)}</span>
+        `;
+        chatMessages.appendChild(div);
+        scrollToBottom();
+      }
+
+      async function fetchHistory(recipient) {
+        chatMessages.innerHTML = '<div class="p-6 text-center text-xs text-slate-500">Loading conversation...</div>';
+        try {
+          const res = await fetch(`/api/chat/messages?with=${encodeURIComponent(recipient)}`, {
+            headers: { 'x-user-email': storedUser.email },
+          });
+          const data = await res.json();
+          chatMessages.innerHTML = '';
+          if (data && data.success && Array.isArray(data.messages)) {
+            if (data.messages.length === 0) {
+              chatMessages.innerHTML = '<div class="h-full flex items-center justify-center text-xs text-slate-500">No messages yet. Send one below!</div>';
+            } else {
+              data.messages.forEach((m) => {
+                appendMessage({
+                  senderName: m.senderName,
+                  text: m.text,
+                  timestamp: m.timestamp,
+                  isOwn: (m.senderEmail || '').toLowerCase() === storedUser.email.toLowerCase(),
+                });
+              });
+            }
+          }
+        } catch (e) {
+          chatMessages.innerHTML = '<div class="p-6 text-center text-xs text-red-400">Failed to load messages</div>';
+        }
+      }
+
+      async function loadContacts() {
+        try {
+          const res = await fetch('/api/chat/contacts', {
+            headers: { 'x-user-email': storedUser.email },
+          });
+          const data = await res.json();
+          if (data && data.success && Array.isArray(data.contacts)) {
+            contactsList = data.contacts;
+            renderContacts();
+          }
+        } catch (e) {}
+      }
+
+      // Explicit priority map (dnd > idle > online > offline)
+      const STATUS_PRIORITY = {
+        'dnd': 4,
+        'idle': 3,
+        'online': 2,
+        'offline': 1
+      };
+
+      const STATUS_COLORS = {
+        'dnd': 'bg-rose-500',
+        'idle': 'bg-amber-400',
+        'online': 'bg-emerald-400',
+        'offline': 'bg-slate-600'
+      };
+
+      function getStatusForEmail(email) {
+        const cleanEmail = email.toLowerCase().trim();
+        const contactItem = contactsList.find(c => c.user.email.toLowerCase().trim() === cleanEmail);
+        const isOnline = onlineSet.has(cleanEmail) || (contactItem && contactItem.isOnline);
+
+        if (!isOnline) {
+          return 'offline';
+        }
+
+        const manualStatus = userStatuses[cleanEmail];
+        if (manualStatus === 'dnd' || manualStatus === 'idle') {
+          return manualStatus;
+        }
+        return 'online';
+      }
+
+      // Centralized status and color resolver
+      function getStatusColorForEmail(email) {
+        const status = getStatusForEmail(email);
+        return STATUS_COLORS[status] || STATUS_COLORS.offline;
+      }
+
+      function renderContacts() {
+        colleaguesList.innerHTML = '';
+        const q = (contactSearch.value || '').toLowerCase().trim();
+        const filtered = contactsList.filter(c => c.user.name.toLowerCase().includes(q) || c.user.email.toLowerCase().includes(q));
+
+        // Use the explicit priority map to sort contacts by status (dnd > idle > online > offline)
+        filtered.sort((a, b) => {
+          const statusA = getStatusForEmail(a.user.email);
+          const statusB = getStatusForEmail(b.user.email);
+          const priorityA = STATUS_PRIORITY[statusA] || STATUS_PRIORITY.offline;
+          const priorityB = STATUS_PRIORITY[statusB] || STATUS_PRIORITY.offline;
+          
+          if (priorityA !== priorityB) {
+            return priorityB - priorityA; // Higher priority on top
+          }
+          return a.user.name.localeCompare(b.user.name); // Alphabetical fallback
+        });
+
+        filtered.forEach((item) => {
+          const cleanEmail = item.user.email.toLowerCase().trim();
+          const isSel = activeRecipient.toLowerCase().trim() === cleanEmail;
+          const statusClass = getStatusColorForEmail(cleanEmail);
+
+          const btn = document.createElement('button');
+          btn.className = `w-full p-2.5 rounded-xl flex items-center gap-2.5 text-left transition-all ${
+            isSel ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 text-slate-300'
+          }`;
+          btn.innerHTML = `
+            <div class="relative shrink-0">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                isSel ? 'bg-white text-indigo-600' : 'bg-slate-800 text-indigo-400 border border-slate-700'
+              }">${escapeHtml(item.user.name.charAt(0).toUpperCase())}</div>
+              <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${statusClass}"></span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs truncate">${escapeHtml(item.user.name)}</span>
+              </div>
+              <p class="text-[10px] truncate ${isSel ? 'text-indigo-100' : 'text-slate-400'}">${escapeHtml(item.user.department || item.user.email)}</p>
+            </div>
+          `;
+
+          btn.addEventListener('click', () => {
+            selectRecipient(item.user.email, item.user.name, item.user.department);
+          });
+
+          colleaguesList.appendChild(btn);
+        });
+      }
+
+      function selectRecipient(email, name, dept) {
+        activeRecipient = email;
+        if (email === 'room') {
+          headerTitle.innerHTML = '<span>JW Summit Company Room</span><span class="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">0ms WS</span>';
+          headerSubtitle.textContent = 'Broadcast to all company staff';
+          headerAvatar.textContent = '🏢';
+          roomBtn.className = 'w-full p-2.5 rounded-xl flex items-center gap-2.5 bg-indigo-600 text-white transition-all text-left';
+        } else {
+          headerTitle.innerHTML = `<span>${escapeHtml(name)}</span><span class="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">0ms WS</span>`;
+          headerSubtitle.textContent = `${email} • ${dept || 'Staff'}`;
+          headerAvatar.textContent = name.charAt(0).toUpperCase();
+          roomBtn.className = 'w-full p-2.5 rounded-xl flex items-center gap-2.5 hover:bg-slate-800 text-slate-300 transition-all text-left';
+        }
+        renderContacts();
+        fetchHistory(email);
+      }
+
+      roomBtn.addEventListener('click', () => {
+        selectRecipient('room', 'Company Room', '');
+      });
+
+      refreshContactsBtn.addEventListener('click', () => {
+        loadContacts();
+      });
+
+      contactSearch.addEventListener('input', () => {
+        renderContacts();
+      });
+
+      // Send form
+      chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = messageInput.value.trim();
+        if (!text) return;
+
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const msgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+        // Optimistic UI
+        appendMessage({
+          senderName: storedUser.name,
+          text,
+          timestamp: timeStr,
+          isOwn: true,
+        });
+
+        messageInput.value = '';
+
+        const payload = {
+          id: msgId,
+          senderEmail: storedUser.email,
+          senderName: storedUser.name,
+          recipientEmail: activeRecipient,
+          recipientName: activeRecipient === 'room' ? 'Company Room' : activeRecipient.split('@')[0],
+          text,
+          timestamp: timeStr,
+        };
+
+        if (socket.connected) {
+          socket.emit('chat_message', payload);
+          socket.emit('typing', {
+            senderEmail: storedUser.email,
+            senderName: storedUser.name,
+            recipientEmail: activeRecipient,
+            isTyping: false,
+          });
+        }
+
+        try {
+          await fetch('/api/chat/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-user-email': storedUser.email,
+            },
+            body: JSON.stringify(payload),
+          });
+        } catch (err) {}
+      });
+
+      // Typing handler
+      messageInput.addEventListener('input', () => {
+        if (socket.connected) {
+          socket.emit('typing', {
+            senderEmail: storedUser.email,
+            senderName: storedUser.name,
+            recipientEmail: activeRecipient,
+            isTyping: true,
+          });
+          clearTimeout(typingTimeout);
+          typingTimeout = setTimeout(() => {
+            if (socket.connected) {
+              socket.emit('typing', {
+                senderEmail: storedUser.email,
+                senderName: storedUser.name,
+                recipientEmail: activeRecipient,
+                isTyping: false,
+              });
+            }
+          }, 1200);
+        }
+      });
+
+      // Initialize
+      loadContacts();
+      fetchHistory('room');
+    })();
+  </script>
+</body>
+</html>

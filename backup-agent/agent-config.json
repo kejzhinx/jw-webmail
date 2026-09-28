@@ -1,0 +1,6 @@
+{
+  "serverUrl": "http://localhost:3000",
+  "registrationToken": "SECURITY_AUTH_REMOVED",
+  "backupPath": "/opt/jw-backup-agent/backups",
+  "heartbeatIntervalSeconds": 10
+}

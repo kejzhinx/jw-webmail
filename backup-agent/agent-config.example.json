@@ -1,0 +1,21 @@
+{
+  "serverUrl": "https://mail.playbook.com.ph",
+  "registrationToken": "SECURITY_AUTH_REMOVED",
+  "backupPath": "/opt/jw-backup-agent/backups",
+  "heartbeatIntervalSeconds": 10,
+  "imapHost": "mail.playbook.com.ph",
+  "imapPort": 993,
+  "imapSecure": true,
+  "backupIntervalHours": 12,
+  "mailboxCredentials": [
+    {
+      "email": "user@playbook.com.ph",
+      "imapPass": "YOUR_SECURE_PASSWORD_HERE"
+    }
+  ],
+  "logging": {
+    "level": "info",
+    "logToFile": true,
+    "logFilePath": "/var/log/jw-backup-agent.log"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "providerName": "Custom / Bluehost",
+  "imapHost": "mail.playbook.com.ph",
+  "imapPort": 993,
+  "imapSecure": true,
+  "imapEncryption": "SSL/TLS",
+  "imapUsername": "admin@playbook.com.ph",
+  "imapPasswordEnc": "",
+  "imapStatus": "untested",
+  "smtpHost": "mail.playbook.com.ph",
+  "smtpPort": 465,
+  "smtpSecure": true,
+  "smtpEncryption": "SSL/TLS",
+  "smtpUsername": "jw@playbook.com.ph",
+  "smtpPasswordEnc": "",
+  "smtpStatus": "untested",
+  "backupStorageConfig": "local",
+  "backupLocation": "./data/backups",
+  "backupSchedule": "weekly",
+  "backupRetention": "30d",
+  "lastConnectionTest": "Verified at 8:25:42 AM (IMAP: OK)",
+  "updatedAt": "2026-09-16T08:25:42.354Z"
+}
