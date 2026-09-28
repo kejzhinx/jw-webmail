@@ -74,15 +74,97 @@ export const MailDetailView: React.FC<MailDetailViewProps> = ({
       .trim();
   };
 
-  const getDedupeKey = (e: EmailMessage) => {
-    const normMsgId = (e.messageId || '').replace(/^<|>$/g, '').trim().toLowerCase();
-    if (normMsgId) return normMsgId;
-    const from = (e.from?.email || '').toLowerCase().trim();
-    const sub = normalizeSubject(e.subject);
-    const time = e.rawDate || e.timestamp || '';
-    const snippet = (e.preview || e.bodyText || '').replace(/\s+/g, ' ').trim().slice(0, 60);
-    return `fp:${from}|${sub}|${time}|${snippet}`;
-  };
+  const deduplicateEmailList = useCallback((list: EmailMessage[]): EmailMessage[] => {
+    const result: EmailMessage[] = [];
+
+    const normalizeMsgId = (id?: string) => {
+      if (!id) return '';
+      return id.replace(/^<|>$/g, '').trim().toLowerCase();
+    };
+
+    const normalizeSub = (sub?: string) => {
+      if (!sub) return '';
+      return sub
+        .toLowerCase()
+        .replace(/^(re|fw|fwd|aw|wg|reply|forward)[:\s\-]*/gi, '')
+        .replace(/^(re|fw|fwd|aw|wg|reply|forward)\d*[:\s\-]*/gi, '')
+        .replace(/\[.*?\]/g, '')
+        .trim();
+    };
+
+    const getUidAndFolder = (id: string, folderName?: string) => {
+      const parts = (id || '').split('-');
+      const uid = Number(parts[parts.length - 1]);
+      const f = (folderName || (parts.length === 3 ? parts[1] : '')).toLowerCase().trim();
+      return { uid: isNaN(uid) ? null : uid, folder: f === 'inbox' ? 'inbox' : f };
+    };
+
+    for (const msg of list) {
+      if (!msg) continue;
+      const msgNormId = normalizeMsgId(msg.messageId);
+      const msgInfo = getUidAndFolder(msg.id, msg.folder);
+      const msgFrom = (msg.from?.email || '').toLowerCase().trim();
+      const msgSub = normalizeSub(msg.subject);
+      const msgDate = typeof msg.rawDate === 'number' && !isNaN(msg.rawDate) && msg.rawDate > 0
+        ? msg.rawDate
+        : (msg.timestamp ? new Date(msg.timestamp).getTime() : 0);
+
+      const existingIndex = result.findIndex(existing => {
+        if (existing.id === msg.id) return true;
+
+        // Same RFC Message-ID
+        const exNormId = normalizeMsgId(existing.messageId);
+        if (msgNormId && exNormId && msgNormId === exNormId) return true;
+
+        // Same IMAP UID in same folder (e.g. imap-inbox-511 vs imap-INBOX-511)
+        const exInfo = getUidAndFolder(existing.id, existing.folder);
+        if (msgInfo.uid !== null && exInfo.uid !== null && msgInfo.uid === exInfo.uid) {
+          if (msgInfo.folder === exInfo.folder || (!msgInfo.folder && !exInfo.folder)) {
+            return true;
+          }
+        }
+
+        // Same sender, same subject, within 3 minutes
+        const exFrom = (existing.from?.email || '').toLowerCase().trim();
+        const exSub = normalizeSub(existing.subject);
+        const exDate = typeof existing.rawDate === 'number' && !isNaN(existing.rawDate) && existing.rawDate > 0
+          ? existing.rawDate
+          : (existing.timestamp ? new Date(existing.timestamp).getTime() : 0);
+
+        if (msgFrom && exFrom && msgFrom === exFrom && msgSub === exSub && msgSub.length > 1) {
+          if (msgDate > 0 && exDate > 0 && Math.abs(msgDate - exDate) < 180000) {
+            return true;
+          }
+          if (existing.timestamp && msg.timestamp && existing.timestamp === msg.timestamp) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      if (existingIndex === -1) {
+        result.push(msg);
+      } else {
+        const existing = result[existingIndex];
+        const hasMoreDetail = (!existing.bodyText && msg.bodyText) || (msg.isFullDetail && !existing.isFullDetail) || ((msg.attachments?.length || 0) > (existing.attachments?.length || 0));
+        if (hasMoreDetail) {
+          result[existingIndex] = {
+            ...existing,
+            ...msg,
+            bodyText: msg.bodyText || existing.bodyText,
+            bodyHtml: msg.bodyHtml || existing.bodyHtml,
+            preview: msg.preview || existing.preview,
+            attachments: (msg.attachments && msg.attachments.length > 0) ? msg.attachments : existing.attachments,
+            hasAttachments: msg.hasAttachments || existing.hasAttachments,
+            isFullDetail: msg.isFullDetail || existing.isFullDetail,
+          };
+        }
+      }
+    }
+
+    return result;
+  }, []);
 
   const initialLocalThread = React.useMemo(() => {
     if (!allEmails || allEmails.length === 0) return [mail];
@@ -129,13 +211,7 @@ export const MailDetailView: React.FC<MailDetailViewProps> = ({
       return false;
     });
 
-    const uniqueMap = new Map<string, EmailMessage>();
-    matched.forEach(m => {
-      const key = getDedupeKey(m);
-      if (!uniqueMap.has(key)) uniqueMap.set(key, m);
-    });
-
-    const thread = Array.from(uniqueMap.values());
+    const thread = deduplicateEmailList(matched);
     thread.sort((a, b) => {
       const aTime = (typeof a.rawDate === 'number' && !isNaN(a.rawDate) && a.rawDate > 0)
         ? a.rawDate
@@ -147,7 +223,7 @@ export const MailDetailView: React.FC<MailDetailViewProps> = ({
     });
 
     return thread.length > 0 ? thread : [mail];
-  }, [mail, allEmails]);
+  }, [mail, allEmails, deduplicateEmailList]);
 
   const [expandedMessageId, setExpandedMessageId] = useState<string | null>(mail.id);
   const [threadMessages, setThreadMessages] = useState<EmailMessage[]>(initialLocalThread);
@@ -223,14 +299,7 @@ export const MailDetailView: React.FC<MailDetailViewProps> = ({
           if (!active) return;
 
           if (threadRes && threadRes.success && Array.isArray(threadRes.thread) && threadRes.thread.length > 0) {
-            const uniqueThreadMap = new Map<string, EmailMessage>();
-            threadRes.thread.forEach((msg: EmailMessage) => {
-              const key = getDedupeKey(msg);
-              if (!uniqueThreadMap.has(key)) {
-                uniqueThreadMap.set(key, msg);
-              }
-            });
-            setThreadMessages(Array.from(uniqueThreadMap.values()));
+            setThreadMessages(deduplicateEmailList(threadRes.thread));
           }
         }
       } catch (err) {
@@ -270,14 +339,7 @@ export const MailDetailView: React.FC<MailDetailViewProps> = ({
       }).then(r => r.json()).catch(() => null);
 
       if (threadRes && threadRes.success && Array.isArray(threadRes.thread) && threadRes.thread.length > 0) {
-        const uniqueThreadMap = new Map<string, EmailMessage>();
-        threadRes.thread.forEach((msg: EmailMessage) => {
-          const key = getDedupeKey(msg);
-          if (!uniqueThreadMap.has(key)) {
-            uniqueThreadMap.set(key, msg);
-          }
-        });
-        setThreadMessages(Array.from(uniqueThreadMap.values()));
+        setThreadMessages(deduplicateEmailList(threadRes.thread));
       }
     } catch (err) {
       console.error('[MailDetailView] Manual fetch thread error:', err);

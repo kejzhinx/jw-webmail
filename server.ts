@@ -2112,25 +2112,78 @@ export async function startServer() {
         })
       );
 
-      // 3. Deduplicate thread messages by normalized Message-ID or content fingerprint
-      const getDedupeKey = (msg: any) => {
-        const normMsgId = (msg.messageId || '').replace(/^<|>$/g, '').trim().toLowerCase();
-        if (normMsgId) return normMsgId;
-        const from = (msg.from?.email || '').toLowerCase().trim();
-        const sub = normalizeSubject(msg.subject || '');
-        const time = msg.rawDate || msg.timestamp || '';
-        const snippet = (msg.preview || msg.bodyText || '').replace(/\s+/g, ' ').trim().slice(0, 60);
-        return `fp:${from}|${sub}|${time}|${snippet}`;
+      // 3. Deduplicate thread messages by Message-ID, IMAP UID, and sender+subject+timestamp fingerprint
+      const getUidAndFolder = (id: string, folderName?: string) => {
+        const parts = (id || '').split('-');
+        const uid = Number(parts[parts.length - 1]);
+        const f = (folderName || (parts.length === 3 ? parts[1] : '')).toLowerCase().trim();
+        return { uid: isNaN(uid) ? null : uid, folder: f === 'inbox' ? 'inbox' : f };
       };
 
-      const uniqueThreadMap = new Map<string, any>();
-      fullThreadMessages.forEach(msg => {
-        const key = getDedupeKey(msg);
-        if (!uniqueThreadMap.has(key)) {
-          uniqueThreadMap.set(key, msg);
+      const deduplicatedThread: any[] = [];
+      for (const msg of fullThreadMessages) {
+        if (!msg) continue;
+        const msgNormId = normalizeMessageId(msg.messageId);
+        const msgInfo = getUidAndFolder(msg.id, msg.folder);
+        const msgFrom = (msg.from?.email || '').toLowerCase().trim();
+        const msgSub = normalizeSubject(msg.subject || '');
+        const msgDate = typeof msg.rawDate === 'number' && !isNaN(msg.rawDate) && msg.rawDate > 0
+          ? msg.rawDate
+          : (msg.timestamp ? new Date(msg.timestamp).getTime() : 0);
+
+        const existingIndex = deduplicatedThread.findIndex(existing => {
+          if (existing.id === msg.id) return true;
+
+          // Same RFC Message-ID
+          const exNormId = normalizeMessageId(existing.messageId);
+          if (msgNormId && exNormId && msgNormId === exNormId) return true;
+
+          // Same IMAP UID in same folder
+          const exInfo = getUidAndFolder(existing.id, existing.folder);
+          if (msgInfo.uid !== null && exInfo.uid !== null && msgInfo.uid === exInfo.uid) {
+            if (msgInfo.folder === exInfo.folder || (!msgInfo.folder && !exInfo.folder)) {
+              return true;
+            }
+          }
+
+          // Same sender, same subject, and sent around the same time (within 3 minutes)
+          const exFrom = (existing.from?.email || '').toLowerCase().trim();
+          const exSub = normalizeSubject(existing.subject || '');
+          const exDate = typeof existing.rawDate === 'number' && !isNaN(existing.rawDate) && existing.rawDate > 0
+            ? existing.rawDate
+            : (existing.timestamp ? new Date(existing.timestamp).getTime() : 0);
+
+          if (msgFrom && exFrom && msgFrom === exFrom && msgSub === exSub && msgSub.length > 1) {
+            if (msgDate > 0 && exDate > 0 && Math.abs(msgDate - exDate) < 180000) {
+              return true;
+            }
+            if (existing.timestamp && msg.timestamp && existing.timestamp === msg.timestamp) {
+              return true;
+            }
+          }
+
+          return false;
+        });
+
+        if (existingIndex === -1) {
+          deduplicatedThread.push(msg);
+        } else {
+          const existing = deduplicatedThread[existingIndex];
+          const hasMoreDetail = (!existing.bodyText && msg.bodyText) || (msg.isFullDetail && !existing.isFullDetail) || ((msg.attachments?.length || 0) > (existing.attachments?.length || 0));
+          if (hasMoreDetail) {
+            deduplicatedThread[existingIndex] = {
+              ...existing,
+              ...msg,
+              bodyText: msg.bodyText || existing.bodyText,
+              bodyHtml: msg.bodyHtml || existing.bodyHtml,
+              preview: msg.preview || existing.preview,
+              attachments: (msg.attachments && msg.attachments.length > 0) ? msg.attachments : existing.attachments,
+              hasAttachments: msg.hasAttachments || existing.hasAttachments,
+              isFullDetail: msg.isFullDetail || existing.isFullDetail,
+            };
+          }
         }
-      });
-      const deduplicatedThread = Array.from(uniqueThreadMap.values());
+      }
 
       const extractActualText = (bodyText?: string) => {
         if (!bodyText) return '';

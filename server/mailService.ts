@@ -698,7 +698,8 @@ async function fetchMailboxMessagesRaw(
   } = {}
 ): Promise<{ emails: EmailMessage[]; unreadCount: number }> {
   const userKey = (config.imapUser || 'default').toLowerCase().trim();
-  const storeKey = `${userKey}:${folder}`;
+  const normFolderName = (folder || 'inbox').toLowerCase().trim();
+  const storeKey = `${userKey}:${normFolderName}`;
   let folderMap = persistentMailboxStore.get(storeKey);
   if (!folderMap) {
     folderMap = new Map<string, EmailMessage>();
@@ -830,7 +831,7 @@ async function fetchMailboxMessagesRaw(
                   minute: '2-digit',
                 });
 
-                const id = `imap-${folder}-${msg.uid}`;
+                const id = `imap-${normFolderName}-${msg.uid}`;
 
                 let hasAttachments = false;
                 const attachments: EmailAttachment[] = [];
