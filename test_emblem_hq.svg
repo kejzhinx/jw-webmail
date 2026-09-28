@@ -1,0 +1,33 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1500 1000' width='100%' height='100%' fill='none'>
+  <!-- Left Top Black Block -->
+  <rect x='200' y='135' width='230' height='310' fill='#1A1A1A' />
+
+  <!-- Orange U-Shape (Left bottom + curve + Middle Stem) -->
+  <path
+    d='M 200,525
+       L 200,580
+       C 200,750 330,880 500,880
+       C 670,880 800,750 800,580
+       L 800,92
+       L 535,92
+       L 535,580
+       C 535,600 520,615 500,615
+       C 480,615 465,600 465,580
+       L 465,525
+       Z'
+    fill='#F15A24'
+  />
+
+  <!-- Right Black J-Hook -->
+  <path
+    d='M 870,135
+       L 1100,135
+       L 1100,580
+       C 1100,760 970,895 780,895
+       C 715,895 670,865 630,820
+       C 700,845 770,815 825,750
+       C 865,700 870,645 870,580
+       Z'
+    fill='#1A1A1A'
+  />
+</svg>
