@@ -21,10 +21,11 @@ import {
   Trash2,
   Loader2,
 } from 'lucide-react';
-import { CustomFolder, EmailMessage, FolderType } from '../types';
+import { CustomFolder, EmailMessage, FolderType, User } from '../types';
 
 interface MailDetailViewProps {
   mail: EmailMessage;
+  currentUser?: User;
   currentFolder?: FolderType;
   customFolders?: CustomFolder[];
   allEmails?: EmailMessage[];
@@ -34,12 +35,13 @@ interface MailDetailViewProps {
   onDelete: (id: string) => void;
   onToggleRead: (id: string) => void;
   onMoveFolder?: (id: string, targetFolder: string) => void;
-  onSendQuickReply?: (to: string, subject: string, body: string) => Promise<boolean> | void;
+  onSendQuickReply?: (to: string, subject: string, body: string, inReplyTo?: string, references?: string) => Promise<any> | void;
   onUpdateMail?: (mail: EmailMessage) => void;
 }
 
 export const MailDetailView: React.FC<MailDetailViewProps> = ({
   mail,
+  currentUser,
   currentFolder = 'inbox',
   customFolders = [],
   allEmails = [],
@@ -92,16 +94,6 @@ export const MailDetailView: React.FC<MailDetailViewProps> = ({
 
     const normMailId = (mail.messageId || '').replace(/^<|>$/g, '').trim().toLowerCase();
     const mailInReply = (mail.inReplyTo || '').replace(/^<|>$/g, '').trim().toLowerCase();
-    const hasThreadHeaders = Boolean(
-      (mailInReply && mailInReply.length > 0) ||
-      (mail.references && mail.references.trim().length > 0) ||
-      isReplyOrForward(mail.subject)
-    );
-
-    // If this is a standalone message with no reply/forward prefix and no in-reply-to headers, it has no conversation history
-    if (!hasThreadHeaders) {
-      return [mail];
-    }
 
     const seedSub = normalizeSubject(mail.subject);
     const seedParticipants = new Set([
@@ -125,9 +117,9 @@ export const MailDetailView: React.FC<MailDetailViewProps> = ({
         return true;
       }
 
-      // 2. Exact subject match ONLY if it is a genuine reply/forward conversation between the same participants
+      // 2. Exact subject match if it is a reply/forward conversation between the same participants
       const eSub = normalizeSubject(e.subject);
-      if (eSub && seedSub && eSub === seedSub && seedSub.length > 2 && (isReplyOrForward(e.subject) || isReplyOrForward(mail.subject))) {
+      if (eSub && seedSub && eSub === seedSub && seedSub.length > 2) {
         const eFrom = (e.from?.email || '').toLowerCase();
         const eTo = (e.to || []).map(t => (t.email || '').toLowerCase());
         if (eFrom && (seedParticipants.has(eFrom) || eTo.some(toEmail => seedParticipants.has(toEmail)))) {
@@ -221,7 +213,7 @@ export const MailDetailView: React.FC<MailDetailViewProps> = ({
         }
 
         // 2. If it is an Inbox conversation thread, also fetch all other linked thread messages
-        if (!isNonInbox && hasThreadHeaders) {
+        if (!isNonInbox) {
           const threadRes = await fetch(`/api/mail/${encodeURIComponent(mail.id)}/thread?folder=${encodeURIComponent(normFolder)}`, {
             headers: authHeaders,
           })
@@ -330,14 +322,59 @@ export const MailDetailView: React.FC<MailDetailViewProps> = ({
     e.preventDefault();
     if (!quickReplyText.trim()) return;
 
+    const replyBody = quickReplyText.trim();
     setIsSendingReply(true);
     try {
       if (onSendQuickReply) {
         const baseSub = threadMessages.length > 0 ? threadMessages[0].subject : mail.subject;
         const subject = /^re:/i.test(baseSub) ? baseSub : `Re: ${baseSub}`;
-        await onSendQuickReply(mail.from.email, subject, quickReplyText);
-        setReplySentSuccess(true);
+
+        const senderEmail = currentUser?.email || (mail.to && mail.to.length > 0 ? mail.to[0].email : 'Me');
+        const senderName = currentUser?.name || senderEmail.split('@')[0] || 'Me';
+
+        // 0ms Optimistic UI: immediately append the sent reply into the thread
+        const optimisticId = `sent-optimistic-${Date.now()}`;
+        const now = new Date();
+        const optimisticMsg: EmailMessage = {
+          id: optimisticId,
+          folder: 'sent',
+          from: { name: senderName, email: senderEmail },
+          to: [mail.from],
+          subject,
+          preview: replyBody.slice(0, 100),
+          bodyText: replyBody,
+          bodyHtml: replyBody.replace(/\n/g, '<br/>'),
+          timestamp: now.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          rawDate: now.getTime(),
+          isRead: true,
+          isStarred: false,
+          hasAttachments: false,
+          attachments: [],
+          security: {
+            tlsVersion: 'TLS 1.3 Strict',
+            dkimStatus: 'pass',
+            spfStatus: 'pass',
+            signatureVerified: true,
+            ipOrigin: '127.0.0.1 (Local Session)',
+          },
+          inReplyTo: mail.messageId,
+          references: mail.references ? `${mail.references} ${mail.messageId || ''}`.trim() : (mail.messageId || undefined),
+        };
+
+        setThreadMessages(prev => [...prev, optimisticMsg]);
+        setExpandedMessageId(optimisticId);
         setQuickReplyText('');
+        setReplySentSuccess(true);
+
+        const inReplyTo = mail.messageId;
+        const references = mail.references ? `${mail.references} ${mail.messageId || ''}`.trim() : mail.messageId;
+
+        await onSendQuickReply(mail.from.email, subject, replyBody, inReplyTo, references);
         await fetchThread();
         setTimeout(() => setReplySentSuccess(false), 3000);
       }

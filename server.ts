@@ -1967,9 +1967,9 @@ export async function startServer() {
         isReplyOrForward(email.subject)
       );
 
-      // If requested for Sent, Drafts, Trash, or if the email is a standalone new message with no reply/forward headers, keep it strictly as an individual single message
+      // If requested for Drafts, Trash, Spam, keep it strictly as an individual single message
       const normFolder = (folder || 'inbox').toLowerCase();
-      if (!hasThreadHeaders || normFolder.includes('sent') || normFolder.includes('draft') || normFolder.includes('trash') || normFolder.includes('spam') || normFolder.includes('junk')) {
+      if (normFolder.includes('draft') || normFolder.includes('trash') || normFolder.includes('spam') || normFolder.includes('junk')) {
         return res.json({ success: true, thread: [email] });
       }
 
@@ -2001,11 +2001,25 @@ export async function startServer() {
           .trim();
       };
 
+      // Also gather all candidate messages from persistent mailbox store for this user (including freshly sent replies)
+      const userKey = (config.imapUser || '').toLowerCase().trim();
+      const persistentCandidates: any[] = [];
+      for (const [k, map] of persistentMailboxStore.entries()) {
+        if (k.toLowerCase().startsWith(userKey)) {
+          for (const m of map.values()) {
+            persistentCandidates.push(m);
+          }
+        }
+      }
+
       // Dedup candidates strictly by unique candidate ID
-      const allCandidates = results.flatMap(r => (r && r.emails) ? r.emails : []);
+      const allCandidates = [
+        ...results.flatMap(r => (r && r.emails) ? r.emails : []),
+        ...persistentCandidates,
+      ];
       const uniqueCandidatesMap = new Map<string, any>();
       allCandidates.forEach(cand => {
-        if (!uniqueCandidatesMap.has(cand.id)) {
+        if (cand && cand.id && !uniqueCandidatesMap.has(cand.id)) {
           uniqueCandidatesMap.set(cand.id, cand);
         }
       });
@@ -2244,9 +2258,9 @@ export async function startServer() {
     }
   });
 
-  app.post(['/api/mail/send', '/api/emails/send'], upload.any(), async (req, res) => {
+  app.post(['/api/mail/send', '/api/emails/send'], upload.any() as any, async (req: any, res: any) => {
     console.log('[API /api/mail/send] req.body keys:', Object.keys(req.body || {}), 'req.files count:', (req.files as any)?.length || 0);
-    let { to, cc, bcc, subject, body, bodyText, isHtml, deleteDraftId, clientAttachments: rawClientAttachments } = req.body;
+    let { to, cc, bcc, subject, body, bodyText, isHtml, deleteDraftId, clientAttachments: rawClientAttachments, inReplyTo, references } = req.body;
 
     if (typeof to === 'string') {
       try { to = JSON.parse(to); } catch {}
@@ -2352,6 +2366,8 @@ export async function startServer() {
         subject: subject || '(No Subject)',
         bodyText: bodyText || body || '',
         bodyHtml: isHtml ? (bodyText || body || '') : undefined,
+        inReplyTo: inReplyTo || undefined,
+        references: references || undefined,
         attachments,
       });
 
@@ -2375,7 +2391,7 @@ export async function startServer() {
     }
   });
 
-  app.post(['/api/mail/draft', '/api/emails/draft'], upload.any(), async (req, res) => {
+  app.post(['/api/mail/draft', '/api/emails/draft'], upload.any() as any, async (req: any, res: any) => {
     let { to, cc, bcc, subject, bodyText, existingDraftId, clientAttachments: rawClientAttachments } = req.body;
     if (typeof to === 'string') { try { to = JSON.parse(to); } catch {} }
     if (typeof cc === 'string') { try { cc = JSON.parse(cc); } catch {} }

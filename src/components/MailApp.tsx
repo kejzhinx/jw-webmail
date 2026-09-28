@@ -503,12 +503,21 @@ export const MailApp: React.FC<MailAppProps> = ({
       }));
     }
 
-    // Group emails into conversation threads for Inbox ONLY if they are genuine replies/forwards or share thread linkage
+    // 1. Identify all normalized subjects that participate in a conversation thread
+    const threadSubjects = new Set<string>();
+    uniqueEmails.forEach(mail => {
+      const normSub = normalizeSubject(mail.subject);
+      if (normSub && normSub.length > 2 && (isReplyOrForward(mail.subject) || mail.inReplyTo || mail.references)) {
+        threadSubjects.add(normSub);
+      }
+    });
+
+    // 2. Group emails into conversation threads for Inbox
     const groupsMap = new Map<string, EmailMessage[]>();
     uniqueEmails.forEach(mail => {
       const normSub = normalizeSubject(mail.subject);
-      const isConvo = isReplyOrForward(mail.subject) || mail.inReplyTo || mail.references;
-      const threadKey = (isConvo && normSub && normSub.length > 2) ? normSub : mail.id;
+      const isConvo = normSub && normSub.length > 2 && (threadSubjects.has(normSub) || isReplyOrForward(mail.subject) || mail.inReplyTo || mail.references);
+      const threadKey = isConvo ? `thread:${normSub}` : mail.id;
 
       if (!groupsMap.has(threadKey)) {
         groupsMap.set(threadKey, []);
@@ -714,6 +723,8 @@ export const MailApp: React.FC<MailAppProps> = ({
     bodyText: string;
     attachments?: EmailAttachment[];
     deleteDraftId?: string;
+    inReplyTo?: string;
+    references?: string;
   }): Promise<{ success: boolean; error?: string }> => {
     try {
       const clientAttachments: any[] = [];
@@ -753,6 +764,8 @@ export const MailApp: React.FC<MailAppProps> = ({
           bodyText: emailData.bodyText,
           deleteDraftId: emailData.deleteDraftId,
           clientAttachments,
+          inReplyTo: emailData.inReplyTo,
+          references: emailData.references,
         }),
       });
 
@@ -830,11 +843,19 @@ export const MailApp: React.FC<MailAppProps> = ({
   };
 
   // Quick reply handler
-  const handleQuickReply = async (toEmail: string, subject: string, bodyText: string) => {
+  const handleQuickReply = async (
+    toEmail: string,
+    subject: string,
+    bodyText: string,
+    inReplyTo?: string,
+    references?: string
+  ) => {
     await handleSendEmail({
       to: [{ name: toEmail.split('@')[0], email: toEmail }],
       subject,
       bodyText,
+      inReplyTo,
+      references,
     });
   };
 
@@ -1821,6 +1842,7 @@ export const MailApp: React.FC<MailAppProps> = ({
           {selectedMail ? (
             <MailDetailView
               mail={selectedMail}
+              currentUser={currentUser}
               currentFolder={currentFolder}
               customFolders={customFolders}
               allEmails={allLoadedEmails}

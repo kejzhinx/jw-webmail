@@ -138,6 +138,7 @@ export interface EmailMessage {
   messageId?: string;
   inReplyTo?: string;
   references?: string;
+  isFullDetail?: boolean;
 }
 
 export interface ChatMessage {

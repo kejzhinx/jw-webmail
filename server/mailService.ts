@@ -98,10 +98,6 @@ export function storeEmailBodyContent(params: {
   if (params.messageId) {
     emailBodyContentStore.set(params.messageId, data);
   }
-  const normSub = normalizeSubject(params.subject);
-  if (normSub && normSub.length > 1) {
-    emailBodyContentStore.set(`sub:${normSub}`, data);
-  }
 }
 
 export function getEmailBodyContent(messageId?: string, subject?: string): CachedBodyContent | undefined {
@@ -111,12 +107,6 @@ export function getEmailBodyContent(messageId?: string, subject?: string): Cache
   }
   if (messageId && emailBodyContentStore.has(messageId)) {
     return emailBodyContentStore.get(messageId);
-  }
-  if (subject) {
-    const normSub = normalizeSubject(subject);
-    if (normSub && emailBodyContentStore.has(`sub:${normSub}`)) {
-      return emailBodyContentStore.get(`sub:${normSub}`);
-    }
   }
   return undefined;
 }
@@ -867,7 +857,7 @@ async function fetchMailboxMessagesRaw(
                   findAttachments(msg.bodyStructure);
                 }
 
-                const cachedData = getEmailBodyContent(envelope?.messageId, subject);
+                const cachedData = envelope?.messageId ? getEmailBodyContent(envelope.messageId) : undefined;
                 const existing = messageCache.get(id) || folderMap.get(id);
 
                 let finalBodyText = '';
@@ -1119,14 +1109,14 @@ export async function fetchMessageDetail(
     }
   }
 
-  // If local cached message already has body text or HTML, return immediately!
-  if (localItem && (localItem.bodyText?.trim() || localItem.bodyHtml?.trim())) {
+  // If local cached message was already fully parsed from IMAP, return immediately!
+  if (localItem && localItem.isFullDetail && (localItem.bodyText?.trim() || localItem.bodyHtml?.trim())) {
     return localItem;
   }
 
   // If messageId has no IMAP numeric UID or if IMAP is offline, resolve from body store
   if (isNaN(uid) || !config.imapHost || !config.imapUser || !config.imapPass) {
-    const cachedContent = getEmailBodyContent(localItem?.messageId || messageId, localItem?.subject);
+    const cachedContent = getEmailBodyContent(localItem?.messageId || messageId);
     if (cachedContent && localItem) {
       localItem.bodyText = cachedContent.bodyText || localItem.bodyText;
       localItem.bodyHtml = cachedContent.bodyHtml || localItem.bodyHtml || (localItem.bodyText ? localItem.bodyText.replace(/\n/g, '<br/>') : undefined);
@@ -1150,7 +1140,7 @@ export async function fetchMessageDetail(
       try {
         const download = await client.download(uid, undefined, { uid: true });
         if (!download || !download.content) {
-          const cachedContent = getEmailBodyContent(localItem?.messageId || messageId, localItem?.subject);
+          const cachedContent = getEmailBodyContent(localItem?.messageId || messageId);
           if (cachedContent && localItem) {
             localItem.bodyText = cachedContent.bodyText;
             localItem.bodyHtml = cachedContent.bodyHtml;
@@ -1216,6 +1206,7 @@ export async function fetchMessageDetail(
           messageId: parsed.messageId || undefined,
           inReplyTo: typeof parsed.inReplyTo === 'string' ? parsed.inReplyTo : (Array.isArray(parsed.inReplyTo) ? parsed.inReplyTo[0] : undefined),
           references: Array.isArray(parsed.references) ? parsed.references.join(' ') : parsed.references || undefined,
+          isFullDetail: true,
         };
 
         messageCache.set(messageId, fullMessage);
@@ -1492,6 +1483,7 @@ export async function sendEmailViaSmtp(
         messageId: info.messageId,
         inReplyTo: options.inReplyTo,
         references: options.references,
+        isFullDetail: true,
       };
       sentFolderMap.set(sentMsgId, sentMailItem);
       messageCache.set(sentMsgId, sentMailItem);
@@ -1801,7 +1793,7 @@ export async function emptyTrashFolder(
 
       try {
         const status = await client.status(trashPath, { messages: true });
-        const totalMessages = status.messages || 0;
+        const totalMessages = (status && typeof status === 'object' && 'messages' in status ? status.messages : 0) || 0;
         console.log(`[MailService] Emptying trash for ${userKey}. Host IMAP messages found: ${totalMessages}`);
 
         if (totalMessages > 0) {
@@ -1894,7 +1886,7 @@ export async function emptyFolderMessages(
 
         try {
           const status = await client.status(mailboxPath, { messages: true });
-          const totalMessages = status.messages || 0;
+          const totalMessages = (status && typeof status === 'object' && 'messages' in status ? status.messages : 0) || 0;
           console.log(`[MailService] Purging ${normFolder} for ${userKey}. Host IMAP messages found: ${totalMessages}`);
 
           if (totalMessages > 0) {

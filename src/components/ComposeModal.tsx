@@ -19,6 +19,8 @@ interface ComposeModalProps {
     bodyText: string;
     attachments?: EmailAttachment[];
     deleteDraftId?: string;
+    inReplyTo?: string;
+    references?: string;
   }) => Promise<{ success: boolean; error?: string } | boolean>;
   onSaveDraft?: (draftData: {
     to: { name: string; email: string }[];
@@ -220,6 +222,8 @@ const ComposeModalContent: React.FC<ComposeModalProps> = ({
         bodyText,
         attachments,
         deleteDraftId: existingDraftId,
+        inReplyTo: replyTo?.messageId || undefined,
+        references: replyTo?.references ? `${replyTo.references} ${replyTo.messageId || ''}`.trim() : (replyTo?.messageId || undefined),
       });
 
       const isSuccess = typeof sendRes === 'boolean' ? sendRes : sendRes?.success;
